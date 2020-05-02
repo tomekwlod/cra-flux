@@ -1,40 +1,51 @@
-import React, { useState, useEffect } from 'react';
-import { toast }  from 'react-toastify';
+import React, { useState, useEffect } from "react";
+import { toast } from "react-toastify";
 
 import CourseForm from "./CourseForm";
-import * as courseApi from "../api/courseApi";
+import courseStore from "../stores/courseStore";
+import * as courseActions from "../actions/courseActions";
 
 const ManageCoursePage = props => {
-
-    const [ course, setCourse ] = useState({
+    const [errors, setErrors] = useState({});
+    const [courses, setCourses] = useState(courseStore.getCourses());
+    const [course, setCourse] = useState({
         id: null,
         slug: "",
         title: "",
         authorId: null,
-        category: "",
+        category: ""
     });
-    const [ errors, setErrors ] = useState({});
 
-    useEffect( () => {
-        const slug = props.match.params.slug;
+    useEffect(() => {
 
-        if ( slug ) {
-            courseApi.getCourseBySlug(slug).then( _course => setCourse(_course));
+        courseStore.addChangeListener(onChange);
+
+        const slug = props.match.params.slug; // from the path `/courses/:slug`
+
+        if (courses.length === 0) {
+
+            courseActions.loadCourses();
+
+        } else if (slug) {
+
+            setCourse(courseStore.getCourseBySlug(slug));
         }
-    }, [props.match.params.slug]);
 
-    function handleChange({target}) {  // desctructuring the event; so we take only target from incoming event to avoid typing event.target everywhere
-        //
-        // here we're copying the `course` object to not mutate it directly!
-        //
-        // const updatedCourse = {...course}; // spread operator copies the course object
-        // updatedCourse.title = event.target.value;
+        return () => courseStore.removeChangeListener(onChange);
 
-        // or we can do e=verything in one line:
-        const updatedCourse = {...course, [target.name]: target.value}; // copy and midify in one line
-        // [event.target.name] is not an array! it is the 'computed property'; it sets an object property based on a variable
+    }, [courses.length, props.match.params.slug]);
 
-        setCourse(updatedCourse);
+    function onChange() {
+
+        setCourses(courseStore.getCourses());
+    }
+
+    function handleChange({ target }) {
+
+        setCourse({
+            ...course,
+            [target.name]: target.value
+        });
     }
 
     function handleSubmit(event) {
@@ -46,11 +57,11 @@ const ManageCoursePage = props => {
             return;
         }
 
-        courseApi.saveCourse(course).then( () => {
-            props.history.push("/courses");
+        courseActions.saveCourse(course).then(() => {
 
-            toast.success("Course saved");
-        } );
+            props.history.push("/courses");
+            toast.success("Course saved.");
+        });
     }
 
     function formIsValid() {
@@ -85,7 +96,7 @@ const ManageCoursePage = props => {
                 onSubmit={handleSubmit} 
             />
         </>
-    )
+    );
 };
 
-export  default ManageCoursePage;
+export default ManageCoursePage;
